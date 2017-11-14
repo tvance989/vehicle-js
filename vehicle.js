@@ -1,21 +1,40 @@
-//-- Vehicle class --\\
+var Vector = require("/Users/decisiontoolbox/dev/steering/vector");//.
 
-function Vehicle(opts) {
-	if(typeof opts === "undefined") opts = {};
 
-	this.position = opts.position || new Vector;
-	this.velocity = opts.velocity || new Vector;
+/**
+ * Represents a vehicle
+ * @constructor
+ * @param {Vector} pos - The vehicle's position.
+ * @param {Vector} vel - The vehicle's velocity.
+ */
+var Vehicle = function(pos, vel) {
+	this.position = pos || new Vector;
+	this.velocity = vel || new Vector;
 }
 
-// static properties
+
+//-- Static Properties --\\
+//.this is not what I want. figure out better place to config.
+//.maybe make Vehicle abstract and force proper config when concretizing?
+if(true) {
+	MAX_SPEED = 20;
+	MAX_FORCE = 5;
+	MASS = 1;
+	PERCEPTION = 30;
+	LEEWAY = 5;
+}
 Vehicle.prototype.max_speed = MAX_SPEED;	// The vehicle's max speed.
 Vehicle.prototype.max_force = MAX_FORCE;	// The vehicle's max force.
 Vehicle.prototype.mass = MASS;				// The vehicle's mass, which affects acceleration.
 Vehicle.prototype.perception = PERCEPTION;	// How far the vehicle can "see."
 Vehicle.prototype.leeway = LEEWAY;			// Elbow room required by the vehicle when separating.
 
+
+/**
+ * @param {Number} dt Multiplier for position.//.word this better
+ */
 Vehicle.prototype.apply_force = function(force, dt) {
-	dt = dt || 1;//.(unit) test this
+	dt = dt || 1;
 
 	force = force.limit(this.max_force);
 	var acc = force.scale(1 / this.mass);
@@ -30,8 +49,9 @@ Vehicle.prototype.apply_force = function(force, dt) {
 //-- Steering Behaviors --\\
 
 /**
+ * THE BIG ONE
  * steering = desired - current
- * @param desired Vector The vehicle's desired velocity.
+ * @param {Vector} desired The vehicle's desired velocity.
  */
 Vehicle.prototype.steer = function(desired) {
 	desired = desired.limit(this.max_speed);	// 1. Don't let the vehicle desire the impossible.
@@ -41,7 +61,7 @@ Vehicle.prototype.steer = function(desired) {
 
 /**
  * Go AFAP toward the target.
- * @param target Vector The point that the vehicle is trying to reach.
+ * @param {Vector} target The point that the vehicle is trying to reach.
  */
 Vehicle.prototype.seek = function(target) {
 	var desired = target.sub(this.position).setMagnitude(this.max_speed);
@@ -53,31 +73,35 @@ Vehicle.prototype.seek = function(target) {
  * @param target Vector The point that the vehicle is fleeing from.
  */
 Vehicle.prototype.flee = function(target) {
-	return -this.seek(target);//.test this
+	return this.seek(target).mul(-1);
 }
 
 /**
  * Go AFAP toward the target until nearby, then approach slowly.
- * @param target Vector The point that the vehicle is trying to reach.
+ * @param {Vector} target The point that the vehicle is trying to reach.
+ * @param {Number} radius Slowing radius. If closer than this, approach slowly. Else, seek AFAP. Defaults to vehicle's max speed / max force.
  */
-Vehicle.prototype.arrive = function(target) {
-	var desired = target.sub(this.position);
-	var sq_d = desired.sqrMag();//.test these changes
+Vehicle.prototype.arrive = function(target, radius) {
+	radius = radius || (this.max_speed / this.max_force);
 
-	var arbitrary = 50 * 50;//.
-	if(sq_d > arbitrary) {
-		return this.seek(desired);
+	var desired = target.sub(this.position); // desired direction
+	var sq_d = desired.sqrMag();
+
+	if(sq_d < radius*radius) {
+		// If we're close, approach slowly.
+		return this.steer(desired.setMagnitude(Math.sqrt(sq_d) * this.max_speed / radius));
 	} else {
-		return this.steer(desired.setMagnitude(Math.sqrt(sq_d) * this.max_speed / arbitrary));
+		// Else, seek AFAP!
+		return this.seek(target);
 	}
 }
 
 /**
  * Anticipate where the target will be and seek its future position.
- * @param target Vehicle The object that this vehicle is trying to catch.
+ * @param {Vehicle} target The object that this vehicle is trying to catch.
  */
 Vehicle.prototype.pursue = function(target) {
-	return this.seek(target.position + target.velocity);
+	return this.seek(target.position.add(target.velocity));
 }
 
 /**
@@ -85,7 +109,7 @@ Vehicle.prototype.pursue = function(target) {
  * @param target Vehicle The object that this vehicle is trying to catch.
  */
 Vehicle.prototype.evade = function(target) {
-	return this.flee(target.position + target.velocity);
+	return this.flee(target.position.add(target.velocity));
 }
 
 /**
@@ -193,3 +217,7 @@ Vehicle.prototype.flock = function() {
 	return separation.add(alignment).add(cohesion);
 }
 */
+
+
+
+module.exports = Vehicle;
