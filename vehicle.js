@@ -114,33 +114,38 @@ Vehicle.prototype.evade = function(target) {
 
 /**
  * Move away from vehicles that are too close.
- * @param neighbors [Vehicle] A list of neighboring vehicles to separate from.
+ * @param {[Vehicle]} neighbors A list of neighboring vehicles to separate from.
  */
 Vehicle.prototype.separate = function(neighbors) {
 	var v = new Vector;
+	if(neighbors.length == 0) return v;
+
+	var sq_leeway = this.leeway * this.leeway;
+
 	var count = 0;
 
-	neighbors.forEach(function(neighbor){
-		var d = this.position.distance(neighbor.position);
+	neighbors.forEach(function(neighbor) {
+		var sq_d = this.position.sqrDist(neighbor.position);
+
 		// If it's too close for comfort...
-		if(d < this.leeway) {
+		if(sq_d < sq_leeway) {
 			// ...find the vector pointing away from the neighbor...
 			var away = this.position.sub(neighbor.position);
 			// ...and weight that vector by distance (smaller distance => greater repulsion).
-			v = v.add(away.setMagnitude(1 / d));
+			v = v.add(away.setMagnitude(1 / Math.sqrt(sq_d)));
 			count++;
 		}
 	}, this);
 
 	if(count == 0) return v;
 
-	// Steer away AFAP (as fast as possible).
+	// Steer away AFAP.
 	return this.steer(v.setMagnitude(this.max_speed));
 }
 
 /**
  * Find the average direction and steer in that direction.
- * @param neighbors [Vehicle] A list of neighboring vehicles to align with.
+ * @param {[Vehicle]} neighbors A list of neighboring vehicles to align with.
  */
 Vehicle.prototype.align = function(neighbors) {
 	var v = new Vector;
@@ -157,7 +162,7 @@ Vehicle.prototype.align = function(neighbors) {
 
 /**
  * Arrive at the center of mass.
- * @param neighbors [Vehicle] A list of neighboring vehicles to cohere with.
+ * @param {[Vehicle]} neighbors A list of neighboring vehicles to cohere with.
  */
 Vehicle.prototype.cohere = function(neighbors) {
 	var v = new Vector;
@@ -168,8 +173,7 @@ Vehicle.prototype.cohere = function(neighbors) {
 		v = v.add(neighbor.position);
 	}, this);
 
-	v = v.scale(1 / neighbors.length);
-	return this.arrive(v);
+	return this.arrive(v.div(neighbors.length));
 }
 
 
