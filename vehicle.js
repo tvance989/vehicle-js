@@ -31,15 +31,16 @@ Vehicle.prototype.leeway = LEEWAY;			// Elbow room required by the vehicle when 
 
 
 /**
- * @param {Number} dt Multiplier for position.//.word this better
+ * Physics-based locomotion. This takes a force vector and updates the vehicle's velocity and position.
+ * @param {Number} dt Change in time or "delta time" used when applying force gradually or multiple times per second.
  */
 Vehicle.prototype.apply_force = function(force, dt) {
 	dt = dt || 1;
 
-	force = force.limit(this.max_force);
-	var acc = force.scale(1 / this.mass);
+	force = force.limit(this.max_force); // Don't let the vehicle apply more force than it's able to.
+	var acc = force.div(this.mass);
 
-	// Add acceleration to velocity and velocity to position.
+	// Add acceleration to velocity and velocity (modified by dt) to position.
 	this.velocity = this.velocity.add(acc).limit(this.max_speed);
 	this.position = this.position.add(this.velocity.scale(dt));
 }
@@ -79,10 +80,9 @@ Vehicle.prototype.flee = function(target) {
 /**
  * Go AFAP toward the target until nearby, then approach slowly.
  * @param {Vector} target The point that the vehicle is trying to reach.
- * @param {Number} radius Slowing radius. If closer than this, approach slowly. Else, seek AFAP. Defaults to vehicle's max speed / max force.
  */
-Vehicle.prototype.arrive = function(target, radius) {
-	radius = radius || (this.max_speed / this.max_force);
+Vehicle.prototype.arrive = function(target) {
+	var radius = this.max_speed; // "slowing radius" - if farther, seek AFAP
 
 	var desired = target.sub(this.position); // desired direction
 	var sq_d = desired.sqrMag();
@@ -106,7 +106,7 @@ Vehicle.prototype.pursue = function(target) {
 
 /**
  * Anticipate where the target will be and flee from its future position.
- * @param target Vehicle The object that this vehicle is trying to catch.
+ * @param {Vehicle} target The object that this vehicle is evading.
  */
 Vehicle.prototype.evade = function(target) {
 	return this.flee(target.position.add(target.velocity));
@@ -179,13 +179,9 @@ Vehicle.prototype.cohere = function(neighbors) {
 
 
 
-
-
-//.not sure the best place for this stuff...
-
 /**
  * Find vehicles close enough to be called a neighbor.
- * @param vehicles [Vehicle] A list of vehicles that could be neighbors.
+ * @param vehicles [Vehicle] A list of vehicles that could possibly be neighbors.
  */
 Vehicle.prototype.neighbors = function(vehicles) {
 	var neighbors = [];
@@ -210,17 +206,31 @@ Vehicle.prototype.neighbors = function(vehicles) {
 	return neighbors;
 }
 
-/*
-Vehicle.prototype.flock = function() {
-	var neighbors = this.neighbors();
 
-	var separation = this.separate(neighbors).scale(SEPARATION_WEIGHT);
-	var alignment = this.align(neighbors).scale(ALIGNMENT_WEIGHT);
-	var cohesion = this.cohere(neighbors).scale(COHESION_WEIGHT);
 
-	return separation.add(alignment).add(cohesion);
+// more complex behaviors
+
+/**
+ * Flocking is a composite steering behavior made up of 3 other behaviors:
+ * @see separate
+ * @see align
+ * @see cohere
+ * @param {[Vehicle]} vehicles The vehicles in the flock.
+ * @param {Number} sep Relative amount to weight the separation force.
+ * @param {Number} ali Relative amount to weight the alignment force.
+ * @param {Number} coh Relative amount to weight the cohesion force.
+ */
+Vehicle.prototype.flock = function(vehicles, sep, ali, coh) {
+	var separation = this.separate(vehicles).scale(sep);
+	var alignment = this.align(vehicles).scale(ali);
+	var cohesion = this.cohere(vehicles).scale(coh);
+
+	return separation.add(alignment).add(cohesion).limit(this.max_force);
 }
-*/
+
+
+
+
 
 
 
