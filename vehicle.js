@@ -23,8 +23,8 @@ if(true) {
 	PERCEPTION = 30;
 	LEEWAY = 5;
 }
-Vehicle.prototype.max_speed = MAX_SPEED;	// The vehicle's max speed.
-Vehicle.prototype.max_force = MAX_FORCE;	// The vehicle's max force.
+Vehicle.prototype.maxSpeed = MAX_SPEED;	// The vehicle's max speed.
+Vehicle.prototype.maxForce = MAX_FORCE;	// The vehicle's max force.
 Vehicle.prototype.mass = MASS;				// The vehicle's mass, which affects acceleration.
 Vehicle.prototype.perception = PERCEPTION;	// How far the vehicle can "see."
 Vehicle.prototype.leeway = LEEWAY;			// Elbow room required by the vehicle when separating.
@@ -34,14 +34,14 @@ Vehicle.prototype.leeway = LEEWAY;			// Elbow room required by the vehicle when 
  * Physics-based locomotion. This takes a force vector and updates the vehicle's velocity and position.
  * @param {Number} dt Change in time or "delta time" used when applying force gradually or multiple times per second.
  */
-Vehicle.prototype.apply_force = function(force, dt) {
+Vehicle.prototype.applyForce = function(force, dt) {
 	dt = dt || 1;
 
-	force = force.limit(this.max_force); // Don't let the vehicle apply more force than it's able to.
+	force = force.limit(this.maxForce); // Don't let the vehicle apply more force than it's able to.
 	var acc = force.div(this.mass);
 
 	// Add acceleration to velocity and velocity (modified by dt) to position.
-	this.velocity = this.velocity.add(acc).limit(this.max_speed);
+	this.velocity = this.velocity.add(acc).limit(this.maxSpeed);
 	this.position = this.position.add(this.velocity.scale(dt));
 }
 
@@ -55,9 +55,9 @@ Vehicle.prototype.apply_force = function(force, dt) {
  * @param {Vector} desired The vehicle's desired velocity.
  */
 Vehicle.prototype.steer = function(desired) {
-	desired = desired.limit(this.max_speed);	// 1. Don't let the vehicle desire the impossible.
+	desired = desired.limit(this.maxSpeed);	// 1. Don't let the vehicle desire the impossible.
 	var steering = desired.sub(this.velocity);	// 2. Calculate the difference between the vehicle's current and desired velocities.
-	return steering.limit(this.max_force);		// 3. Limit that steering force to the vehicle's max force.
+	return steering.limit(this.maxForce);		// 3. Limit that steering force to the vehicle's max force.
 }
 
 /**
@@ -65,7 +65,7 @@ Vehicle.prototype.steer = function(desired) {
  * @param {Vector} target The point that the vehicle is trying to reach.
  */
 Vehicle.prototype.seek = function(target) {
-	var desired = target.sub(this.position).setMagnitude(this.max_speed);
+	var desired = target.sub(this.position).setMagnitude(this.maxSpeed);
 	return this.steer(desired);
 }
 
@@ -82,14 +82,14 @@ Vehicle.prototype.flee = function(target) {
  * @param {Vector} target The point that the vehicle is trying to reach.
  */
 Vehicle.prototype.arrive = function(target) {
-	var radius = this.max_speed; // "slowing radius" - if farther, seek AFAP
+	var radius = this.maxSpeed; // "slowing radius" - if farther, seek AFAP
 
 	var desired = target.sub(this.position); // desired direction
-	var sq_d = desired.sqrMag();
+	var sqrD = desired.sqrMag();
 
-	if(sq_d < radius*radius) {
+	if(sqrD < radius*radius) {
 		// If we're close, approach slowly.
-		return this.steer(desired.setMagnitude(Math.sqrt(sq_d) * this.max_speed / radius));
+		return this.steer(desired.setMagnitude(Math.sqrt(sqrD) * this.maxSpeed / radius));
 	} else {
 		// Else, seek AFAP!
 		return this.seek(target);
@@ -120,19 +120,19 @@ Vehicle.prototype.separate = function(neighbors) {
 	var v = new Vector;
 	if(neighbors.length == 0) return v;
 
-	var sq_leeway = this.leeway * this.leeway;
+	var sqrLeeway = this.leeway * this.leeway;
 
 	var count = 0;
 
 	neighbors.forEach(function(neighbor) {
-		var sq_d = this.position.sqrDist(neighbor.position);
+		var sqrD = this.position.sqrDist(neighbor.position);
 
 		// If it's too close for comfort...
-		if(sq_d < sq_leeway) {
+		if(sqrD < sqrLeeway) {
 			// ...find the vector pointing away from the neighbor...
 			var away = this.position.sub(neighbor.position);
 			// ...and weight that vector by distance (smaller distance => greater repulsion).
-			v = v.add(away.setMagnitude(1 / Math.sqrt(sq_d)));
+			v = v.add(away.setMagnitude(1 / Math.sqrt(sqrD)));
 			count++;
 		}
 	}, this);
@@ -140,7 +140,7 @@ Vehicle.prototype.separate = function(neighbors) {
 	if(count == 0) return v;
 
 	// Steer away AFAP.
-	return this.steer(v.setMagnitude(this.max_speed));
+	return this.steer(v.setMagnitude(this.maxSpeed));
 }
 
 /**
@@ -157,7 +157,7 @@ Vehicle.prototype.align = function(neighbors) {
 	}, this);
 
 	// Steer in the neighbors' average direction AFAP.
-	return this.steer(v.setMagnitude(this.max_speed));
+	return this.steer(v.setMagnitude(this.maxSpeed));
 }
 
 /**
@@ -225,7 +225,7 @@ Vehicle.prototype.flock = function(vehicles, sep, ali, coh) {
 	var alignment = this.align(vehicles).scale(ali);
 	var cohesion = this.cohere(vehicles).scale(coh);
 
-	return separation.add(alignment).add(cohesion).limit(this.max_force);
+	return separation.add(alignment).add(cohesion).limit(this.maxForce);
 }
 
 
