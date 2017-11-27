@@ -55,7 +55,7 @@ Vehicle.prototype.applyForce = function(force, dt) {
  * @param {Vector} desired The vehicle's desired velocity.
  */
 Vehicle.prototype.steer = function(desired) {
-	desired = desired.limit(this.maxSpeed);	// 1. Don't let the vehicle desire the impossible.
+	desired = desired.limit(this.maxSpeed);		// 1. Don't let the vehicle desire the impossible.
 	var steering = desired.sub(this.velocity);	// 2. Calculate the difference between the vehicle's current and desired velocities.
 	return steering.limit(this.maxForce);		// 3. Limit that steering force to the vehicle's max force.
 }
