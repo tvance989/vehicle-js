@@ -117,7 +117,14 @@ Vehicle.prototype.pursue = function(target) {
  */
 Vehicle.prototype.evade = function(target) {
 	return this.flee(target.position.add(target.velocity));
-}
+};
+
+/**
+ * Gradually slow the vehicle down by steering in the direction opposite its current velocity.
+ */
+Vehicle.prototype.brake = function() {
+	return this.steer(this.velocity.mul(-1));
+};
 
 /**
  * Move away from vehicles that are too close.
