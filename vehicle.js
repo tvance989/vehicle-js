@@ -15,7 +15,6 @@ var Vehicle = function(pos, vel) {
 
 //-- Static Properties --\\
 //.this is not what I want. figure out better place to config.
-//.maybe make Vehicle abstract and force proper config when concretizing?
 if(true) {
 	MAX_SPEED = 20;
 	MAX_FORCE = 5;
@@ -23,8 +22,8 @@ if(true) {
 	PERCEPTION = 30;
 	LEEWAY = 5;
 }
-Vehicle.prototype.maxSpeed = MAX_SPEED;	// The vehicle's max speed.
-Vehicle.prototype.maxForce = MAX_FORCE;	// The vehicle's max force.
+Vehicle.prototype.maxSpeed = MAX_SPEED;		// The vehicle's max speed.
+Vehicle.prototype.maxForce = MAX_FORCE;		// The vehicle's max force.
 Vehicle.prototype.mass = MASS;				// The vehicle's mass, which affects acceleration.
 Vehicle.prototype.perception = PERCEPTION;	// How far the vehicle can "see."
 Vehicle.prototype.leeway = LEEWAY;			// Elbow room required by the vehicle when separating.
@@ -32,18 +31,25 @@ Vehicle.prototype.leeway = LEEWAY;			// Elbow room required by the vehicle when 
 
 /**
  * Physics-based locomotion. This takes a force vector and updates the vehicle's velocity and position.
- * @param {Number} dt Change in time or "delta time" used when applying force gradually or multiple times per second.
+ * @param {Vector} force Steering force to be applied to the vehicle.
+ * @param {Number} dt Change in time or "delta time" used for applying force gradually or multiple times per second.
+ * @return {Vector} The vehicle's actual acceleration after applying the modified force (current velocity minus previous velocity).
  */
 Vehicle.prototype.applyForce = function(force, dt) {
-	dt = dt || 1;
+	dt = Number(dt || 1);
 
 	force = force.limit(this.maxForce); // Don't let the vehicle apply more force than it's able to.
-	var acc = force.div(this.mass);
+	//.should we save acceleration as an instance variable? might need to if we want to apply external forces
+	var acceleration = force.div(this.mass); // Newton's 2nd law: F=ma (or a=F/m)
+
+	var prevVelocity = new Vector(this.velocity.x, this.velocity.y);
 
 	// Add acceleration to velocity and velocity (modified by dt) to position.
-	this.velocity = this.velocity.add(acc).limit(this.maxSpeed);
+	this.velocity = this.velocity.add(acceleration).limit(this.maxSpeed); // Don't let the vehicle move faster than it's able to.
 	this.position = this.position.add(this.velocity.scale(dt));
-}
+
+	return this.velocity.sub(prevVelocity);
+};
 
 
 
@@ -58,7 +64,8 @@ Vehicle.prototype.steer = function(desired) {
 	desired = desired.limit(this.maxSpeed);		// 1. Don't let the vehicle desire the impossible.
 	var steering = desired.sub(this.velocity);	// 2. Calculate the difference between the vehicle's current and desired velocities.
 	return steering.limit(this.maxForce);		// 3. Limit that steering force to the vehicle's max force.
-}
+};
+
 
 /**
  * Go AFAP toward the target.
@@ -67,7 +74,7 @@ Vehicle.prototype.steer = function(desired) {
 Vehicle.prototype.seek = function(target) {
 	var desired = target.sub(this.position).setMagnitude(this.maxSpeed);
 	return this.steer(desired);
-}
+};
 
 /**
  * Go AFAP away from the target.
@@ -75,7 +82,7 @@ Vehicle.prototype.seek = function(target) {
  */
 Vehicle.prototype.flee = function(target) {
 	return this.seek(target).mul(-1);
-}
+};
 
 /**
  * Go AFAP toward the target until nearby, then approach slowly.
@@ -94,7 +101,7 @@ Vehicle.prototype.arrive = function(target) {
 		// Else, seek AFAP!
 		return this.seek(target);
 	}
-}
+};
 
 /**
  * Anticipate where the target will be and seek its future position.
@@ -102,7 +109,7 @@ Vehicle.prototype.arrive = function(target) {
  */
 Vehicle.prototype.pursue = function(target) {
 	return this.seek(target.position.add(target.velocity));
-}
+};
 
 /**
  * Anticipate where the target will be and flee from its future position.
@@ -141,7 +148,7 @@ Vehicle.prototype.separate = function(neighbors) {
 
 	// Steer away AFAP.
 	return this.steer(v.setMagnitude(this.maxSpeed));
-}
+};
 
 /**
  * Find the average direction and steer in that direction.
@@ -158,7 +165,7 @@ Vehicle.prototype.align = function(neighbors) {
 
 	// Steer in the neighbors' average direction AFAP.
 	return this.steer(v.setMagnitude(this.maxSpeed));
-}
+};
 
 /**
  * Arrive at the center of mass.
@@ -174,7 +181,7 @@ Vehicle.prototype.cohere = function(neighbors) {
 	}, this);
 
 	return this.arrive(v.div(neighbors.length));
-}
+};
 
 
 
@@ -204,7 +211,7 @@ Vehicle.prototype.neighbors = function(vehicles) {
 	}, this);
 
 	return neighbors;
-}
+};
 
 
 
@@ -226,11 +233,7 @@ Vehicle.prototype.flock = function(vehicles, sep, ali, coh) {
 	var cohesion = this.cohere(vehicles).scale(coh);
 
 	return separation.add(alignment).add(cohesion).limit(this.maxForce);
-}
-
-
-
-
+};
 
 
 
