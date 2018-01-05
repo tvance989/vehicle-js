@@ -20,13 +20,11 @@ if(true) {
 	MAX_FORCE = 5;
 	MASS = 1;
 	PERCEPTION = 30;
-	LEEWAY = 5;
 }
 Vehicle.prototype.maxSpeed = MAX_SPEED;		// The vehicle's max speed.
 Vehicle.prototype.maxForce = MAX_FORCE;		// The vehicle's max force.
 Vehicle.prototype.mass = MASS;				// The vehicle's mass, which affects acceleration.
 Vehicle.prototype.perception = PERCEPTION;	// How far the vehicle can "see."
-Vehicle.prototype.leeway = LEEWAY;			// Elbow room required by the vehicle when separating.
 
 
 /**
@@ -134,7 +132,7 @@ Vehicle.prototype.separate = function(neighbors) {
 	var v = new Vector;
 	if(neighbors.length == 0) return v;
 
-	var sqrLeeway = this.leeway * this.leeway;
+	var sqrLeeway = this.velocity.sqrMag() / this.maxForce; // less space is needed at lower speeds
 
 	var count = 0;
 
@@ -151,7 +149,7 @@ Vehicle.prototype.separate = function(neighbors) {
 		}
 	}, this);
 
-	if(count == 0) return v;
+	if(count === 0) return v;
 
 	// Steer away AFAP.
 	return this.steer(v.setMagnitude(this.maxSpeed));
@@ -190,6 +188,15 @@ Vehicle.prototype.cohere = function(neighbors) {
 	return this.arrive(v.div(neighbors.length));
 };
 
+//.https://www.red3d.com/cwr/steer/gdc99/
+//.avoid obstacles
+//.avoid collisions
+//.wander
+//.flow field
+//.offset pursuit
+//.shadow (similar to offset pursuit?)
+//.follow leader
+//.interpose (get between two other vehicles)
 
 
 
@@ -199,7 +206,7 @@ Vehicle.prototype.cohere = function(neighbors) {
  */
 Vehicle.prototype.neighbors = function(vehicles) {
 	var neighbors = [];
-	var sqrD = Math.pow(this.perception, 2);
+	var sqrPerception = Math.pow(this.perception, 2);
 
 	vehicles.forEach(function(vehicle){
 		if(vehicle == this) return;
@@ -211,7 +218,7 @@ Vehicle.prototype.neighbors = function(vehicles) {
 			vehicle.position.y < this.position.y + this.perception)
 		{
 			// Is it inside the actual perception radius?
-			if(vehicle.position.sqrDist(this.position) < sqrD) {
+			if(vehicle.position.sqrDist(this.position) < sqrPerception) {
 				neighbors.push(vehicle);
 			}
 		}
